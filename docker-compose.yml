@@ -1,0 +1,38 @@
+# Phase 1: frontend, backend, postgres. Redis + worker are added in Phase 10.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-codelens}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-codelens}
+      POSTGRES_DB: ${POSTGRES_DB:-codelens}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-codelens}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-codelens}:${POSTGRES_PASSWORD:-codelens}@postgres:5432/${POSTGRES_DB:-codelens}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
